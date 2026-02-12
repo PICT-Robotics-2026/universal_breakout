@@ -49,15 +49,15 @@ static int get_duty_cycle(int angle,
 		   int max_duty_us,
 		   int max_angle)
 {
-    float min_duty = min_duty_us / 20000.0 * 8192.0;
-    float max_duty = max_duty_us / 20000.0 * 8192.0;
+    float min_duty = (float)min_duty_us / 20000.0 * 8192.0;
+    float max_duty = (float)max_duty_us / 20000.0 * 8192.0;
 
     if (angle < 0)
 	return min_duty;
     
     if (angle > max_angle)
 	return max_duty;
-	    
+   
     return ((float)angle / (float)max_angle * (float)(max_duty - min_duty) + min_duty);
 }
 
@@ -121,7 +121,7 @@ void servo_init(servo_t servo)
 	.channel        = servo_channels[servo],			
 	.timer_sel      = LEDC_TIMER,					
 	.intr_type      = LEDC_INTR_DISABLE,				
-	.gpio_num       = servo_channels[servo],			
+	.gpio_num       = servo_pins[servo],			
 	.duty           = 0,				
 	.hpoint         = 0						
     };									

@@ -83,6 +83,8 @@ void current_sensors_init(void)
 
 float sensor_get_current(current_sensor_t sensor)
 {
+    current_sensors_init();
+    
     float current = 0;
     esp_err_t err = ina219_get_current(&current_sensors[sensor],
 				       &current);

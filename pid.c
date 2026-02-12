@@ -9,7 +9,8 @@
 #include "cytrons.h"
 #include "encoders.h"
 
-bool is_at_least_one_pid_started = false; 
+bool is_pid_thread_started = false; 
+bool is_pid_initialized = false;
 
 typedef struct pid_info
 {
@@ -21,14 +22,19 @@ typedef struct pid_info
     int target;
 } pid_info;
 
-pid_info pid_infos[4];
+pid_info pid_infos[6];
 
 static void pid_loop()
 {
+    if (is_pid_thread_started)
+	return;
+
+    is_pid_thread_started = true;
+    
     ESP_LOGI("pid_loop", "Starting PID loop task");
     while (true)
     {
-	for (motor_t motor = 0; motor < 4; motor++)
+	for (motor_t motor = 0; motor < 6; motor++)
 	{
 	    
 	    pid_info info = pid_infos[motor];
@@ -40,9 +46,9 @@ static void pid_loop()
 
 	    int speed = info.P * error;
 
-	    ESP_LOGI("pid_loop", "motor %d, speed: %d",
-		     motor,
-		     speed);
+	    /* ESP_LOGI("pid_loop", "motor %d, speed: %d", */
+	    /* 	     motor, */
+	    /* 	     speed); */
 	    
 	    motor_set_speed(motor, speed);
 	}
@@ -51,14 +57,19 @@ static void pid_loop()
     }
 }
 
-void pid_set_target(motor_t motor, int target)
+void pid_goto(motor_t motor, int target)
 {
     pid_infos[motor].target = target;
 }
 
 void pid_init()
 {
-    for (int i=0;i<4;i++)
+    if (is_pid_initialized)
+	return;
+
+    is_pid_initialized = true;
+    
+    for (int i=0;i<6;i++)
     {
 	pid_info p = {
 	    .pid_enabled = false,
@@ -83,6 +94,7 @@ void pid_init()
 
 void pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 {
+    pid_init();
 
     encoder_init(encoder);
 
@@ -111,9 +123,9 @@ void pid_calibrate_encoder(motor_t motor, encoder_t encoder)
     }
 }
 
-void pid_register_motor_encoder(motor_t motor,
-				encoder_t encoder,
-				float P)
+void pid_register(motor_t motor,
+		  encoder_t encoder,
+		  float P)
 {
     pid_calibrate_encoder(motor, encoder);
 

@@ -3,6 +3,7 @@ idf_component_register(SRCS "cytrons.c"
 			    "limit_switches.c" 
 			    "uart.c" 
 			    "current_sensors.c" 
-			    "servos.c" 
+			    "servos.c"
+			    "pid.c"
                     INCLUDE_DIRS "include"
 		    REQUIRES driver)
