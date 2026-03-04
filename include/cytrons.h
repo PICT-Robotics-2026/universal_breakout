@@ -14,3 +14,7 @@ void motor_init(motor_t);
 void motor_set_pwm_limit(motor_t,int);
 void motor_set_speed(motor_t,int);
 void motor_set_speed_smooth(motor_t,int);
+void motor_set_smoothing(motor_t, int);
+int motor_get_clamped_speed(motor_t, int);
+void motor_disable_smoothing(motor_t);
+int motor_get_max_pwm(motor_t);

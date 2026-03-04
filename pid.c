@@ -23,6 +23,7 @@ typedef struct pid_info
     float D;
     int target;
     int history_ptr;
+    int max_ticks;
 } pid_info;
 
 pid_info pid_infos[6];
@@ -92,7 +93,13 @@ static void pid_loop()
 	    int speed = info.P * error;
 
 
-	    int stall = get_stall(speed, last_encoder_readings[motor], position);
+	    /* stall will only take into account the clamped speed as
+	       without this, it results in us recording arbirtarily
+	       large values which quickly bring the stall above the
+	       threshold */
+	    int stall = get_stall(motor_get_clamped_speed(motor, speed),
+				  last_encoder_readings[motor],
+				  position);
 
 	    stall_history[motor][info.history_ptr % STALL_HISTORY_SIZE] = stall;
 	    pid_infos[motor].history_ptr += 1;
@@ -108,7 +115,7 @@ static void pid_loop()
 
 	    ESP_LOGI("stall", "avg_stall: %d", avg_stall);
 	    
-	    if (avg_stall > MAX_STALL)
+	    if (avg_stall > motor_get_max_pwm(motor))
 	    {
 		motor_set_speed(motor, 0);
 		ESP_LOGE("motor", "Motor stall detected, stopping motor %d", motor + 1);
@@ -123,9 +130,30 @@ static void pid_loop()
     }
 }
 
+
+static int clamp(int input, int lower, int upper)
+{
+    
+    if (upper <= lower)
+	{
+	    ESP_LOGE("pid", "clamp upper limit %d is less equal to lower limit %d", upper, lower);
+	    return 0;
+	}
+    
+    if (input > upper)
+	return upper;
+    if (input < lower)
+	return lower;
+
+    return input;
+}
+
 void pid_goto(motor_t motor, int target)
 {
-    pid_infos[motor].target = target;
+    if (!pid_infos[motor].pid_enabled)
+	return;
+    
+    pid_infos[motor].target = clamp(target, 0, pid_infos[motor].max_ticks);
 }
 
 void pid_init()
@@ -144,6 +172,7 @@ void pid_init()
 	    .I = 0,
 	    .D = 0,
 	    .target = 0,
+	    .max_ticks = 0,
 	    .history_ptr = 0
 	};
 	
@@ -195,7 +224,8 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 
 void pid_register(motor_t motor,
 		  encoder_t encoder,
-		  float P)
+		  float P,
+		  int max_ticks)
 {
     if(!pid_calibrate_encoder(motor, encoder))
 	return;			/* dont enable pid if calibration fails */
@@ -206,7 +236,8 @@ void pid_register(motor_t motor,
 	.P = P,
 	.I = 0.0,
 	.D = 0.0,
-	.target = 0
+	.target = 0,
+	.max_ticks = max_ticks
     };
     
     pid_infos[motor] = info;

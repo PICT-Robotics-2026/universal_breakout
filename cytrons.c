@@ -85,19 +85,20 @@ static int clamp(int input, int lower, int upper)
 bool is_timer_setup = false;
 bool is_motor_setup[6] = { false, false, false, false, false, false };
 
-#define MOTOR_SPEED_HISTORY_SIZE 3
+#define MOTOR_SPEED_HISTORY_SIZE 10
 
 int motor_speed_history[6][MOTOR_SPEED_HISTORY_SIZE];
 int motor_history_ptr[6] = {0};
+int motor_smoothing[6] = {1,1,1,1,1,1}; /* how many past values should the smoothing filter average, 1 means no smoothing */
 
 int get_avg_motor_speed(motor_t motor)
 {
     float sum = 0;
-    for (int i = 0; i < MOTOR_SPEED_HISTORY_SIZE; i++)
+    for (int i = 0; i < motor_smoothing[motor]; i++)
     {
-	sum += motor_speed_history[motor][i];
+	sum += motor_speed_history[motor][(i + motor_history_ptr[motor]) % motor_smoothing[motor]];
     }
-    return (int)(sum / MOTOR_SPEED_HISTORY_SIZE);
+    return (int)(sum / motor_smoothing[motor]);
 }
 
 static void setup_timer()
@@ -156,21 +157,44 @@ void motor_set_pwm_limit(motor_t motor, int speed_limit)
     motor_pwm_limits[motor] = abs(speed_limit);
 }
 
+void motor_set_smoothing(motor_t motor, int smoothing)
+{
+    int clamped_smoothing = clamp(smoothing, 1, MOTOR_SPEED_HISTORY_SIZE);
+    motor_smoothing[motor] = clamped_smoothing;
+}
+
+void motor_disable_smoothing(motor_t motor)
+{
+    motor_set_smoothing(motor, 1);
+}
+
+int motor_get_max_pwm(motor_t motor)
+{
+    return motor_pwm_limits[motor];
+}
+
+int motor_get_clamped_speed(motor_t motor, int unclamped_speed)
+{
+    int clamped_speed = clamp(unclamped_speed,
+			      -motor_pwm_limits[motor],
+			      motor_pwm_limits[motor]);
+    return clamped_speed;
+}
+
 void motor_set_speed_smooth(motor_t motor, int speed)
 {
     /* to ensure that motor is initialized */
     motor_init(motor);
 
-    motor_speed_history[motor][motor_history_ptr[motor] % MOTOR_SPEED_HISTORY_SIZE] = speed;
-    motor_history_ptr[motor] += 1;
-
+    motor_speed_history[motor][motor_history_ptr[motor] % motor_smoothing[motor]] = speed;
     int avg_speed = get_avg_motor_speed(motor);
-
+    /* incrementing after get_avg_motor_speed is essential, otherwise
+       will have undefnied behaviour, cuz '%' in C is dogshit */
+    motor_history_ptr[motor] += 1;
     
-    int clamped_speed = clamp(avg_speed,
-			      -motor_pwm_limits[motor],
-			      motor_pwm_limits[motor]);
-
+    int clamped_speed = motor_get_clamped_speed(motor,
+						avg_speed);
+	
     if (clamped_speed > 0)
 	gpio_set_level(motor_dir_pins[motor], 1);
     else

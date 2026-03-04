@@ -10,4 +10,5 @@ void pid_goto(motor_t,int);
 void pid_init();
 void pid_register(motor_t,
 		  encoder_t,
-		  float);
+		  float,
+		  int);
