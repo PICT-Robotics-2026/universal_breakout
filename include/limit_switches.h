@@ -13,3 +13,4 @@ typedef enum limit_sw_t
 
 void limit_switches_init();
 int limit_get_pressed(limit_sw_t);
+void limit_sw_test();

@@ -13,3 +13,4 @@ typedef enum motor_t
 void motor_init(motor_t);
 void motor_set_pwm_limit(motor_t,int);
 void motor_set_speed(motor_t,int);
+void motor_set_speed_smooth(motor_t,int);

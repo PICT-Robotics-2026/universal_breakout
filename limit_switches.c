@@ -5,6 +5,8 @@
 
 #include "limit_switches.h"
 
+#include "esp_log.h"
+
 // these pins are doubled because two limit switches are on common
 // pins cuz we dint have enough pins
 #define LIMIT_SW_1_PIN 27
@@ -48,4 +50,18 @@ int limit_get_pressed(limit_sw_t sw)
     limit_switches_init();
     
     return !gpio_get_level(limit_switch_pins[sw]);
+}
+
+void limit_sw_test()
+{
+    while(true)
+    {
+	ESP_LOGI("limit_sw", "l1: %d, l2: %d, l3: %d, l4: %d",
+		 limit_get_pressed(L1),
+		 limit_get_pressed(L2),
+		 limit_get_pressed(L3),
+		 limit_get_pressed(L4));
+
+	vTaskDelay(pdMS_TO_TICKS(50));
+    }
 }

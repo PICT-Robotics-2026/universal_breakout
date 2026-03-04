@@ -247,3 +247,17 @@ void encoder_print_directions()
 		 encoder_direction[i]);
     }
 }
+
+void encoders_test()
+{
+    while (true)
+    {
+	ESP_LOGI("encoders", "e1: %d, e2: %d, e3: %d, e4: %d",
+		 encoder_get_position(E1),
+		 encoder_get_position(E2),
+		 encoder_get_position(E3),
+		 encoder_get_position(E4));
+
+	vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}

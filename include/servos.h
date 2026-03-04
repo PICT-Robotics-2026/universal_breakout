@@ -11,3 +11,4 @@ void servo_set_angle(servo_t,int);
 void servo_set_limits(servo_t,int,int,int);
 
 void servo_init(servo_t);
+void servo_test(servo_t servo);

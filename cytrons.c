@@ -85,6 +85,21 @@ static int clamp(int input, int lower, int upper)
 bool is_timer_setup = false;
 bool is_motor_setup[6] = { false, false, false, false, false, false };
 
+#define MOTOR_SPEED_HISTORY_SIZE 3
+
+int motor_speed_history[6][MOTOR_SPEED_HISTORY_SIZE];
+int motor_history_ptr[6] = {0};
+
+int get_avg_motor_speed(motor_t motor)
+{
+    float sum = 0;
+    for (int i = 0; i < MOTOR_SPEED_HISTORY_SIZE; i++)
+    {
+	sum += motor_speed_history[motor][i];
+    }
+    return (int)(sum / MOTOR_SPEED_HISTORY_SIZE);
+}
+
 static void setup_timer()
 {
     if (is_timer_setup)
@@ -141,10 +156,44 @@ void motor_set_pwm_limit(motor_t motor, int speed_limit)
     motor_pwm_limits[motor] = abs(speed_limit);
 }
 
+void motor_set_speed_smooth(motor_t motor, int speed)
+{
+    /* to ensure that motor is initialized */
+    motor_init(motor);
+
+    motor_speed_history[motor][motor_history_ptr[motor] % MOTOR_SPEED_HISTORY_SIZE] = speed;
+    motor_history_ptr[motor] += 1;
+
+    int avg_speed = get_avg_motor_speed(motor);
+
+    
+    int clamped_speed = clamp(avg_speed,
+			      -motor_pwm_limits[motor],
+			      motor_pwm_limits[motor]);
+
+    if (clamped_speed > 0)
+	gpio_set_level(motor_dir_pins[motor], 1);
+    else
+	gpio_set_level(motor_dir_pins[motor], 0);
+
+    int abs_speed = abs(clamped_speed);
+
+    ledc_set_duty(LEDC_LOW_SPEED_MODE,
+		  motor_pwm_channels[motor],
+		  abs_speed);
+    
+    ledc_update_duty(LEDC_LOW_SPEED_MODE,
+		     motor_pwm_channels[motor]);
+
+}
+
 void motor_set_speed(motor_t motor, int speed)
 {
     /* to ensure that motor is initialized */
     motor_init(motor);
+
+    /* clear the smoothing array */
+    memset(motor_speed_history, 0, sizeof(int) * MOTOR_SPEED_HISTORY_SIZE);
     
     int clamped_speed = clamp(speed,
 			      -motor_pwm_limits[motor],

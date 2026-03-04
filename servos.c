@@ -129,3 +129,13 @@ void servo_init(servo_t servo)
 
     is_servo_initialized[servo] = true;
 }
+
+void servo_test(servo_t servo)
+{
+    for (int i=0;i<servo_max_angle[servo];i++)
+    {
+	servo_set_angle(servo, i);
+	ESP_LOGI("servos", "Servo %d angle = %d", servo + 1, i);
+	vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
