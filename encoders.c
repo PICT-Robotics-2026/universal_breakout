@@ -45,12 +45,12 @@ int encoder_b[4] = {
     ENC_4_B
 };
 
-volatile int encoder_ticks[4] = {0, 0, 0, 0};
+static int encoder_ticks[4] = {0, 0, 0, 0};
 
-volatile int encoder_direction[4] = { 1, 1, 1, 1 };
+static int encoder_direction[4] = { 1, 1, 1, 1 };
 
-pcnt_unit_handle_t encoder_pcnt_units[4]; 
-bool encoder_initialized[4] = { false, false, false, false };
+static pcnt_unit_handle_t encoder_pcnt_units[4]; 
+static bool encoder_initialized[4] = { false, false, false, false };
 
 static bool pcnt_encoder_1_on_reach(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) 
 { 

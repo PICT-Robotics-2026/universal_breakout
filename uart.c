@@ -3,6 +3,7 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_timer.h"
 
 #define USB_UART_NUM UART_NUM_0
 #define UART_WAIT_TICKS_WRITE 100 // number of freertos ticks to wait for uart to transmit
@@ -46,17 +47,22 @@ void write_string(char* string)
 }
 
 //returns length of string read
-int read_string(int max_length, char* string)
+int read_string(int max_length, char* string, int timeout_ms)
 {
     int length = 0;
 
+    int64_t start_time_ms = esp_timer_get_time() / 1000;
+    
     // this loop keeps waiting for uart to recieve data, while also
     // sleeping so the watchdog is triggerred periodically
-    while (length == 0)
+    while (length == 0 && ((esp_timer_get_time() / 1000) - start_time_ms) < timeout_ms)
     {
 	ESP_ERROR_CHECK(uart_get_buffered_data_len(USB_UART_NUM,(size_t*) &length));
-	vTaskDelay(pdMS_TO_TICKS(10));
+	vTaskDelay(pdMS_TO_TICKS(20));
     }
+
+    if (length == 0)
+	return 0;
     
     if (length > (max_length - 1))
     {

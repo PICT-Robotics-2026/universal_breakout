@@ -91,6 +91,7 @@ static void pid_loop()
 
 	    int speed = info.P * error;
 
+
 	    int stall = get_stall(speed, last_encoder_readings[motor], position);
 
 	    stall_history[motor][info.history_ptr % STALL_HISTORY_SIZE] = stall;
@@ -158,7 +159,7 @@ void pid_init()
 			    1);
 }
 
-void pid_calibrate_encoder(motor_t motor, encoder_t encoder)
+bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 {
     pid_init();
 
@@ -175,10 +176,12 @@ void pid_calibrate_encoder(motor_t motor, encoder_t encoder)
     if (encoder_get_position(encoder) > 0)
     {
 	encoder_set_direction(encoder, 1);
+	return true;
     }
     else if (encoder_get_position(encoder) < 0)
     {
 	encoder_set_direction(encoder, -1);
+	return true;
     }
     else
     {
@@ -186,6 +189,7 @@ void pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 		 "ERROR!!! Motor M_%d, & Encoder E_%d Don't Match",
 		 motor+1,
 		 encoder+1);
+	return false;
     }
 }
 
@@ -193,7 +197,8 @@ void pid_register(motor_t motor,
 		  encoder_t encoder,
 		  float P)
 {
-    pid_calibrate_encoder(motor, encoder);
+    if(!pid_calibrate_encoder(motor, encoder))
+	return;			/* dont enable pid if calibration fails */
 
     pid_info info = {
 	.pid_enabled = true,
