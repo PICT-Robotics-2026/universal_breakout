@@ -70,6 +70,27 @@ int get_stall(int pwm, int last_encoder_reading, int current_encoder_reading)
     return  abs((int)((float)pwm / (float) (1 + max(d_x * pwm_sign, 0))));
 }
 
+// It will always presume that negative dction is toward the limit
+// switch
+void calibrate(motor_t motor, limit_sw_t limit_switch)
+{
+
+    ESP_LOGI("calibration", "Starting calibration of motor %d, limit_sw: %d", motor + 1, limit_switch + 1);
+    
+    motor_set_speed(motor, -500);
+
+    while (!limit_get_pressed(limit_switch))
+    {
+	vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    motor_set_speed(motor, 500);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    motor_set_speed(motor, 0);
+
+    ESP_LOGI("calibration", "Finished Calibration");
+}
+
 static void pid_loop()
 {
     if (is_pid_thread_started)
