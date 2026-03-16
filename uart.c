@@ -52,6 +52,9 @@ int read_string(int max_length, char* string, int timeout_ms)
     int length = 0;
 
     int64_t start_time_ms = esp_timer_get_time() / 1000;
+
+    if (timeout_ms < 0)		     /* negative timeout means infinite wait */
+	timeout_ms = 1000000000000; /* 30 years */
     
     // this loop keeps waiting for uart to recieve data, while also
     // sleeping so the watchdog is triggerred periodically

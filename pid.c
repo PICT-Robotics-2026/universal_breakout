@@ -8,6 +8,7 @@
 
 #include "cytrons.h"
 #include "encoders.h"
+#include "limit_switches.h"
 
 #define max(x,y) (((x) > (y)) ? (x) : (y))
 
