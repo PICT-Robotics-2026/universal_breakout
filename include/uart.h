@@ -2,4 +2,4 @@
 
 void uart_init();
 void write_string(char*);
-int read_string(int, char*, int);
+int read_string(int, char*, int64_t);
