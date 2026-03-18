@@ -5,5 +5,6 @@ idf_component_register(SRCS "cytrons.c"
 			    "current_sensors.c" 
 			    "servos.c"
 			    "pid.c"
+			    "smart_servos.c"
                     INCLUDE_DIRS "include"
 		    REQUIRES driver esp_timer)

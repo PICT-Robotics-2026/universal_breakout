@@ -135,7 +135,7 @@ static void pid_loop()
 
 	    int avg_stall = get_avg_stall(motor);
 
-	    ESP_LOGI("stall", "avg_stall: %d", avg_stall);
+	    /* ESP_LOGI("stall", "avg_stall: %d", avg_stall); */
 	    
 	    if (avg_stall > motor_get_max_pwm(motor))
 	    {

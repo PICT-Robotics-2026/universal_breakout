@@ -72,8 +72,7 @@ void servo_set_angle(servo_t servo,
 				    servo_max_us[servo],
 				    servo_max_angle[servo]); 
     
-    ledc_set_duty(LEDC_MODE, servo_channels[servo], duty_cycle); 
-    ledc_update_duty(LEDC_MODE, servo_channels[servo]);	
+    ledc_set_duty_and_update(LEDC_MODE, servo_channels[servo], duty_cycle, 0); 
 }
 
 void servo_set_limits(servo_t servo,
@@ -104,6 +103,8 @@ static void servo_timer_init()
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
+    ESP_ERROR_CHECK(ledc_fade_func_install(0));
+    
     is_timer_initialized = true;
 }
 
