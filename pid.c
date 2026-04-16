@@ -122,7 +122,8 @@ static void pid_loop()
 
 	    int position = encoder_get_position(info.encoder);
 	    int error = info.target - position;
-	    int d_position = position - last_encoder_readings[motor];
+	    int last_error = info.target - last_encoder_readings[motor];
+	    int d_error = error - last_error;
 
 	    /* motor locking logic */
 	    int motor_locking_error = 0; 
@@ -134,6 +135,10 @@ static void pid_loop()
 		pid_info other_motor_info = pid_infos[other_motor];
 		if (!other_motor_info.pid_enabled)
 		    continue;
+
+		if (!motor_locking[motor][other_motor])
+		    continue;
+		
 		int other_motor_position = encoder_get_position(other_motor_info.encoder);
 		int curr_motor_locking_error = other_motor_position - position;
 
@@ -142,14 +147,21 @@ static void pid_loop()
 	    
 	    int motor_locking_speed = 1.0 * motor_locking_error;
 
-	    ESP_LOGI("pid",
-		     "motor: %d, motor_locking_error: %d",
-		     motor,
-		     motor_locking_error);
+	    /* ESP_LOGI("pid", */
+	    /* 	     "motor: %d, motor_locking_error: %d", */
+	    /* 	     motor, */
+	    /* 	     motor_locking_error); */
 
 	    /* Combined speed calculation */
+
 	    
-	    int simple_pid_speed = info.P * error + info.D * d_position;
+	    ESP_LOGI("pid",
+		     "motor: %d, d_err: %d",
+		     motor,
+		     d_error);
+
+	    
+	    int simple_pid_speed = info.P * error + info.D * d_error;
 	    int clamped_simple_speed = motor_get_clamped_speed(motor, simple_pid_speed);
 	    int scaled_clamped_simple_speed = 0.9 * clamped_simple_speed;
 	    int final_speed = scaled_clamped_simple_speed + motor_locking_speed;
@@ -188,7 +200,7 @@ static void pid_loop()
 	    }
 	}
 
-	vTaskDelay(pdMS_TO_TICKS(50));
+	vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
