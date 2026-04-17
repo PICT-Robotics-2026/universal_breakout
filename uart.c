@@ -55,6 +55,8 @@ int read_string(int max_length, char* string, int64_t timeout_ms)
 
     if (timeout_ms < 0)		     /* negative timeout means infinite wait */
 	timeout_ms = 1000000000000ll; /* 30 years */
+
+    uart_flush_input(USB_UART_NUM);
     
     // this loop keeps waiting for uart to recieve data, while also
     // sleeping so the watchdog is triggerred periodically
