@@ -200,7 +200,7 @@ static void pid_loop()
 	    }
 	}
 
-	vTaskDelay(pdMS_TO_TICKS(10));
+	vTaskDelay(pdMS_TO_TICKS(2));
     }
 }
 
@@ -271,7 +271,7 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
     motor_set_pwm_limit(motor, 2047);
     motor_set_speed(motor, 2047);
     
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(20));
 
     motor_set_pwm_limit(motor, 512);
     motor_set_speed(motor, 0);
