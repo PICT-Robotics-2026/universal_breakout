@@ -8,6 +8,7 @@
 
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "leds.h"
 
 #include "cytrons.h"
 
@@ -39,6 +40,14 @@ static const char *TAG = "cytrons";
 #define CYTRON_3_PWM_1_PIN 33
 #define CYTRON_3_DIR_2_PIN 25
 #define CYTRON_3_PWM_2_PIN 26
+
+#define MIN_COLOR_R 0
+#define MIN_COLOR_G 255
+#define MIN_COLOR_B 0
+
+#define MAX_COLOR_R 255
+#define MAX_COLOR_G 0
+#define MAX_COLOR_B 0
 
 // first index is the cytron number - 1, second is motor number - 1
 int motor_dir_pins[6] = {
@@ -149,6 +158,8 @@ void motor_init(motor_t motor)
 		motor_pwm_pins[motor],
 		motor_pwm_channels[motor]);
 
+    led_init();
+    
     is_motor_setup[motor] = true;
 }
 
@@ -181,6 +192,27 @@ int motor_get_clamped_speed(motor_t motor, int unclamped_speed)
     return clamped_speed;
 }
 
+// factor = 0 outputs min, factor = 1 outputs max
+int lerp(int min, int max, float factor)
+{
+    return (int)(((float)min) * (1.0 - factor) + ((float)max) * factor);
+}
+
+void set_led_color(motor_t motor, int motor_pwm)
+{
+    int min_pwm = 0;
+    int max_pwm = 2048;
+    
+    float factor = (float)(motor_pwm - min_pwm) / (float)(max_pwm - min_pwm);
+
+    int r = lerp(MIN_COLOR_R, MAX_COLOR_R, factor);
+    int g = lerp(MIN_COLOR_G, MAX_COLOR_G, factor);
+    int b = lerp(MIN_COLOR_B, MAX_COLOR_B, factor);
+
+    led_set_on(motor + 1, r, g, b);
+    
+}
+
 void motor_set_speed_smooth(motor_t motor, int speed)
 {
     /* to ensure that motor is initialized */
@@ -202,6 +234,8 @@ void motor_set_speed_smooth(motor_t motor, int speed)
 
     int abs_speed = abs(clamped_speed);
 
+    set_led_color(motor, abs_speed);
+    
     ledc_set_duty(LEDC_LOW_SPEED_MODE,
 		  motor_pwm_channels[motor],
 		  abs_speed);
@@ -230,6 +264,8 @@ void motor_set_speed(motor_t motor, int speed)
 
     int abs_speed = abs(clamped_speed);
 
+    set_led_color(motor, abs_speed);
+    
     ledc_set_duty(LEDC_LOW_SPEED_MODE,
 		  motor_pwm_channels[motor],
 		  abs_speed);

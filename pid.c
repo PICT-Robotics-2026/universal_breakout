@@ -145,7 +145,7 @@ static void pid_loop()
 		motor_locking_error += curr_motor_locking_error;
 	    }
 	    
-	    int motor_locking_speed = 1.0 * motor_locking_error;
+	    int motor_locking_speed = 1.7 * motor_locking_error;
 
 	    /* ESP_LOGI("pid", */
 	    /* 	     "motor: %d, motor_locking_error: %d", */
@@ -155,10 +155,10 @@ static void pid_loop()
 	    /* Combined speed calculation */
 
 	    
-	    ESP_LOGI("pid",
-		     "motor: %d, d_err: %d",
-		     motor,
-		     d_error);
+	    /* ESP_LOGI("pid", */
+	    /* 	     "motor: %d, d_err: %d", */
+	    /* 	     motor, */
+	    /* 	     d_error); */
 
 	    
 	    int simple_pid_speed = info.P * error + info.D * d_error;
@@ -271,7 +271,7 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
     motor_set_pwm_limit(motor, 2047);
     motor_set_speed(motor, 2047);
     
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(30));
 
     motor_set_pwm_limit(motor, 512);
     motor_set_speed(motor, 0);

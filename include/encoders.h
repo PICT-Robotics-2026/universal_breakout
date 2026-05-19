@@ -7,7 +7,8 @@ typedef enum encoder_t
     E1 = 0,
     E2 = 1,
     E3 = 2,
-    E4 = 3
+    E4 = 3,
+    E5 = 4
 } encoder_t;
 
 void encoder_init(encoder_t);

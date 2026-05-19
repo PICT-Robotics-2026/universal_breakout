@@ -28,29 +28,34 @@ static const char *TAG = "encoders";
 #define ENC_4_A	25
 #define ENC_4_B	26
 
+#define ENC_5_A 19
+#define ENC_5_B 13
+
 #define PCNT_LOW_LIMIT -30000
 #define PCNT_HIGH_LIMIT 30000
 
-int encoder_a[4] = {
+int encoder_a[5] = {
     ENC_1_A,
     ENC_2_A,
     ENC_3_A,
-    ENC_4_A
+    ENC_4_A,
+    ENC_5_A
 };
 
-int encoder_b[4] = {
+int encoder_b[5] = {
     ENC_1_B,
     ENC_2_B,
     ENC_3_B,
-    ENC_4_B
+    ENC_4_B,
+    ENC_5_B
 };
 
-static int encoder_ticks[4] = {0, 0, 0, 0};
+static int encoder_ticks[5] = {0, 0, 0, 0, 0};
 
-static int encoder_direction[4] = { 1, 1, 1, 1 };
+static int encoder_direction[5] = { 1, 1, 1, 1, 1 };
 
-static pcnt_unit_handle_t encoder_pcnt_units[4]; 
-static bool encoder_initialized[4] = { false, false, false, false };
+static pcnt_unit_handle_t encoder_pcnt_units[5]; 
+static bool encoder_initialized[5] = { false, false, false, false, false };
 
 static bool pcnt_encoder_1_on_reach(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) 
 { 
@@ -128,11 +133,31 @@ static bool pcnt_encoder_4_on_reach(pcnt_unit_handle_t unit, const pcnt_watch_ev
     return (high_task_wakeup == pdTRUE); 
 } 
 
-pcnt_watch_cb_t watchpoints[4] = {
+static bool pcnt_encoder_5_on_reach(pcnt_unit_handle_t unit, const pcnt_watch_event_data_t *edata, void *user_ctx) 
+{ 
+    BaseType_t high_task_wakeup; 
+    QueueHandle_t queue = (QueueHandle_t)user_ctx; 
+ 
+    xQueueSendFromISR(queue, &(edata->watch_point_value), &high_task_wakeup); 
+ 
+    if (edata->watch_point_value == PCNT_HIGH_LIMIT) 
+    { 
+	encoder_ticks[4] += PCNT_HIGH_LIMIT; 
+    } 
+    else if (edata->watch_point_value == PCNT_LOW_LIMIT) 
+    { 
+	encoder_ticks[4] += PCNT_LOW_LIMIT; 
+    } 
+     
+    return (high_task_wakeup == pdTRUE); 
+} 
+
+pcnt_watch_cb_t watchpoints[5] = {
     pcnt_encoder_1_on_reach,
     pcnt_encoder_2_on_reach,
     pcnt_encoder_3_on_reach,
     pcnt_encoder_4_on_reach,
+    pcnt_encoder_5_on_reach
 };
 
 void encoder_set_direction(encoder_t encoder, int direction)
@@ -239,7 +264,7 @@ int encoder_get_position(encoder_t encoder) {
 
 void encoder_print_directions()
 {
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
 	ESP_LOGI("encoders",
 		 "encoder_directions: ENCODER %d --> %d",
@@ -252,11 +277,12 @@ void encoders_test()
 {
     while (true)
     {
-	ESP_LOGI("encoders", "e1: %d, e2: %d, e3: %d, e4: %d",
+	ESP_LOGI("encoders", "e1: %d, e2: %d, e3: %d, e4: %d, e5: %d",
 		 encoder_get_position(E1),
 		 encoder_get_position(E2),
 		 encoder_get_position(E3),
-		 encoder_get_position(E4));
+		 encoder_get_position(E4),
+		 encoder_get_position(E5));
 
 	vTaskDelay(pdMS_TO_TICKS(50));
     }
