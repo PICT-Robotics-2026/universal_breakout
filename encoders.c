@@ -52,8 +52,9 @@ int encoder_b[5] = {
 
 static int encoder_ticks[5] = {0, 0, 0, 0, 0};
 
-static int encoder_direction[5] = { 1, 1, 1, 1, 1 };
 
+static int encoder_direction[5] = { 1, 1, 1, 1, 1 };
+static float encoder_scaler[5] = {1.0, 1.0, 1.0, 1.0, 1.0};
 static pcnt_unit_handle_t encoder_pcnt_units[5]; 
 static bool encoder_initialized[5] = { false, false, false, false, false };
 
@@ -165,6 +166,10 @@ void encoder_set_direction(encoder_t encoder, int direction)
     encoder_direction[encoder] = direction;
 }
 
+void encoder_set_scaler(encoder_t encoder , float scaler){
+    encoder_scaler[encoder] = scaler;
+}
+
 int encoder_get_direction(encoder_t encoder)
 {
     return encoder_direction[encoder];
@@ -258,8 +263,9 @@ int encoder_get_position(encoder_t encoder) {
 
     int pulse_count = 0; 
     ESP_ERROR_CHECK(pcnt_unit_get_count(encoder_pcnt_units[encoder], &pulse_count)); 
-    int total = encoder_ticks[encoder] + pulse_count; 
-    return encoder_direction[encoder] * total; 
+    int total = encoder_ticks[encoder] + pulse_count;
+    int scaled_total = (int)((float)total * encoder_scaler[encoder]);
+    return encoder_direction[encoder] * scaled_total; 
 }
 
 void encoder_print_directions()

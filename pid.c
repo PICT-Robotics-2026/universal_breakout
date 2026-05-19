@@ -123,7 +123,7 @@ static void pid_loop()
     ESP_LOGI("pid_loop", "Starting PID loop task");
     while (true)
     {
-	blink_counter++;
+	blink_counter += 2;
 	if (blink_counter % BLINK_PERIOD_MS == 0)
 	    blink_state = !blink_state;
 	
@@ -150,7 +150,8 @@ static void pid_loop()
 	    int d_error = error - last_error;
 
 	    /* motor locking logic */
-	    int motor_locking_error = 0; 
+	    int motor_locking_error = 0;
+	    int num_locked_motors = 0;
 	    for (motor_t other_motor = 0; other_motor < 6; other_motor++)
 	    {
 		if (other_motor == motor)
@@ -166,14 +167,19 @@ static void pid_loop()
 		int other_motor_position = encoder_get_position(other_motor_info.encoder);
 		int curr_motor_locking_error = other_motor_position - position;
 
+		num_locked_motors += 1;
 		motor_locking_error += curr_motor_locking_error;
 	    }
 	    
-	    int motor_locking_speed = 1.7 * motor_locking_error;
+	    if (num_locked_motors == 0) /* just to avoid divide by zero */
+		num_locked_motors = 1;
+		    
+	    int motor_locking_speed = 1.0 * ((float)motor_locking_error / (float)num_locked_motors);
+
 
 	    /* ESP_LOGI("pid", */
 	    /* 	     "motor: %d, motor_locking_error: %d", */
-	    /* 	     motor, */
+	    /* 	     motor + 1, */
 	    /* 	     motor_locking_error); */
 
 	    /* Combined speed calculation */
@@ -300,6 +306,7 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
     motor_set_pwm_limit(motor, 2047);
     motor_set_speed(motor, 2047);
     
+
     vTaskDelay(pdMS_TO_TICKS(30));
 
     motor_set_pwm_limit(motor, 512);

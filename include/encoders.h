@@ -18,3 +18,4 @@ void encoder_set_direction(encoder_t,int);
 int encoder_get_direction(encoder_t);
 void encoder_print_directions();
 void encoders_test();
+void encoder_set_scaler(encoder_t, float);
