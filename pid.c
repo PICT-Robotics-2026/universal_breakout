@@ -9,8 +9,11 @@
 #include "cytrons.h"
 #include "encoders.h"
 #include "limit_switches.h"
+#include "leds.h"
 
 #define max(x,y) (((x) > (y)) ? (x) : (y))
+
+#define BLINK_PERIOD_MS 100
 
 bool is_pid_thread_started = false; 
 bool is_pid_initialized = false;
@@ -18,6 +21,7 @@ bool is_pid_initialized = false;
 typedef struct pid_info
 {
     bool pid_enabled;
+    bool error;
     encoder_t encoder;
     float P;
     float I;
@@ -90,11 +94,15 @@ void calibrate(motor_t motor, limit_sw_t limit_switch)
     
     motor_set_speed(motor, -500);
 
+    led_set_on(motor + 1, 0, 0, 255);
+    
     while (!limit_get_pressed(limit_switch))
     {
 	vTaskDelay(pdMS_TO_TICKS(10));
     }
 
+    led_set_off(motor + 1);
+    
     motor_set_speed(motor, 500);
     vTaskDelay(pdMS_TO_TICKS(75));
     motor_set_speed(motor, 0);
@@ -108,18 +116,34 @@ static void pid_loop()
 	return;
 
     is_pid_thread_started = true;
+
+    unsigned int blink_counter = 0;
+    bool blink_state = true;
     
     ESP_LOGI("pid_loop", "Starting PID loop task");
     while (true)
     {
+	blink_counter++;
+	if (blink_counter % BLINK_PERIOD_MS == 0)
+	    blink_state = !blink_state;
+	
 	for (motor_t motor = 0; motor < 6; motor++)
 	{
 
 	    /* simple PID logic */
 	    pid_info info = pid_infos[motor];
-	    if (!info.pid_enabled)
-		continue;
+	    
+	    if (info.error)
+	    {
+		if (blink_state)
+		    led_set_on(motor + 1, 255, 0, 0);
+		else
+		    led_set_off(motor + 1);
+	    }
 
+	    if (!info.pid_enabled)
+		continue;	
+	    
 	    int position = encoder_get_position(info.encoder);
 	    int error = info.target - position;
 	    int last_error = info.target - last_encoder_readings[motor];
@@ -232,15 +256,20 @@ void pid_goto(motor_t motor, int target)
 
 void pid_init()
 {
+
+    
     if (is_pid_initialized)
 	return;
 
+    ESP_LOGI("pid", "initializing task...");
+    
     is_pid_initialized = true;
     
     for (int i=0;i<6;i++)
     {
 	pid_info p = {
 	    .pid_enabled = false,
+	    .error = false,
 	    .encoder = 0,
 	    .P = 0,
 	    .I = 0,
@@ -292,6 +321,9 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 		 "ERROR!!! Motor M_%d, & Encoder E_%d Don't Match",
 		 motor+1,
 		 encoder+1);
+
+	pid_infos[motor].error = true;
+	
 	return false;
     }
 }
@@ -319,6 +351,7 @@ void pid_register(motor_t motor,
 
     pid_info info = {
 	.pid_enabled = true,
+	.error = false,
 	.encoder = encoder,
 	.P = P,
 	.I = 0.0,

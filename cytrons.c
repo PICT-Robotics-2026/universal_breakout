@@ -195,13 +195,18 @@ int motor_get_clamped_speed(motor_t motor, int unclamped_speed)
 // factor = 0 outputs min, factor = 1 outputs max
 int lerp(int min, int max, float factor)
 {
+    if (factor < 0)
+	factor = 0.0;
+    else if (factor > 1.0)
+	factor = 1.0;
+    
     return (int)(((float)min) * (1.0 - factor) + ((float)max) * factor);
 }
 
 void set_led_color(motor_t motor, int motor_pwm)
 {
     int min_pwm = 0;
-    int max_pwm = 2048;
+    int max_pwm = (float)motor_pwm_limits[motor] * 0.85;
     
     float factor = (float)(motor_pwm - min_pwm) / (float)(max_pwm - min_pwm);
 

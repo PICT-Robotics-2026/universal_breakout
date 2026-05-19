@@ -8,6 +8,7 @@
 #include "limit_switches.h"
 #include "uart.h"
 #include "smart_servos.h"
+#include "leds.h"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
