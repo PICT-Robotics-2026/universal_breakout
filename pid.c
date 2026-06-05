@@ -1,5 +1,4 @@
 #include <stdio.h>
-
 #include "esp_log.h"
 #include "esp_sleep.h"
 #include "esp_err.h"
@@ -239,10 +238,10 @@ static int clamp(int input, int lower, int upper)
 {
     
     if (upper <= lower)
-	{
-	    ESP_LOGE("pid", "clamp upper limit %d is less equal to lower limit %d", upper, lower);
-	    return 0;
-	}
+    {
+	ESP_LOGE("pid", "clamp upper limit %d is less equal to lower limit %d", upper, lower);
+	return 0;
+    }
     
     if (input > upper)
 	return upper;
@@ -303,11 +302,10 @@ bool pid_calibrate_encoder(motor_t motor, encoder_t encoder)
 
     encoder_init(encoder);
 
-    motor_set_pwm_limit(motor, 2047);
-    motor_set_speed(motor, 2047);
+    motor_set_pwm_limit(motor, 800);
+    motor_set_speed(motor, 800);
     
-
-    vTaskDelay(pdMS_TO_TICKS(30));
+    vTaskDelay(pdMS_TO_TICKS(70));
 
     motor_set_pwm_limit(motor, 512);
     motor_set_speed(motor, 0);

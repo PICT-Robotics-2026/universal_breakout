@@ -7,5 +7,6 @@ idf_component_register(SRCS "cytrons.c"
 			    "pid.c"
 			    "smart_servos.c"
 			    "leds.c"
+			    "s_curve.c"
                     INCLUDE_DIRS "include"
 		    REQUIRES driver esp_timer led_strip)
