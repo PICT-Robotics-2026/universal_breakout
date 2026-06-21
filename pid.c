@@ -13,6 +13,8 @@
 #define max(x,y) (((x) > (y)) ? (x) : (y))
 
 #define BLINK_PERIOD_MS 100
+#define INTEGRATOR_HISTORY 500
+#define INTEGRATOR_CLAMPING 400	/* this is pwm, make sure this is just enough */
 
 bool is_pid_thread_started = false; 
 bool is_pid_initialized = false;
@@ -33,6 +35,8 @@ typedef struct pid_info
 pid_info pid_infos[6];
 int last_encoder_readings[6] = {0};
 
+int last_errors[6][INTEGRATOR_HISTORY];
+
 /* motor locking is a way to make sure that the encoder readings of
    two motors match exactly such as in R2 where both updown motors
    must be level so the bot does not tip */
@@ -43,46 +47,34 @@ int last_encoder_readings[6] = {0};
    then m2 must be locked to m1, the matrix must be symmetric */
 static int motor_locking[6][6] = {0};
 
-/* Here we define an abstract concept called 'stall' stall will be
-   proportional to the motor PWM and inversely proportional to the
-   derivative of the encoder reading. The exact formula becomes 
-
-   Stall = PWM / (1 + max(dx/dt, 0))
-
-   PWM - motor pwm
-   dx/dt - change in the encoder reading since last loop iteration
-
-   We will maintain a history of the 'stall' quantity for the past If
-   the average value of this goes above a certain threshold which is
-   determined exprimentally, the motor will be stopped to prevent
-   excessive stalling
-
-*/
-
-/* 40 readings corresponds to 2 seconds as our loop is 20hz*/
-
-#define STALL_HISTORY_SIZE 40	
-#define MAX_STALL 1000
-
-int stall_history[6][STALL_HISTORY_SIZE];
-
-int get_avg_stall(motor_t motor)
+static int clamp(int input, int lower, int upper)
 {
-    float sum = 0;
-    for (int i = 0; i < STALL_HISTORY_SIZE; i++)
+    
+    if (upper <= lower)
+	{
+	    ESP_LOGE("clamping", "clamp upper limit %d is less equal to lower limit %d", upper, lower);
+	    return 0;
+	}
+    
+    if (input > upper)
+	return upper;
+    if (input < lower)
+	return lower;
+
+    return input;
+}
+
+int calculate_integral(motor_t motor)
+{
+    double result = 0;
+    for (int i = 0; i < INTEGRATOR_HISTORY; i++)
     {
-	sum += stall_history[motor][i];
+	result += clamp(last_errors[motor][i], -INTEGRATOR_CLAMPING, INTEGRATOR_CLAMPING);
     }
 
-    return (int)(sum/STALL_HISTORY_SIZE);
+    return result / INTEGRATOR_CLAMPING;
 }
 
-int get_stall(int pwm, int last_encoder_reading, int current_encoder_reading)
-{
-    int pwm_sign = (pwm >= 0) ? 1 : -1;
-    float d_x = current_encoder_reading - last_encoder_reading;
-    return  abs((int)((float)pwm / (float) (1 + max(d_x * pwm_sign, 0))));
-}
 
 // It will always presume that negative dction is toward the limit
 // switch
@@ -145,9 +137,15 @@ static void pid_loop()
 	    
 	    int position = encoder_get_position(info.encoder);
 	    int error = info.target - position;
-	    int last_error = info.target - last_encoder_readings[motor];
-	    int d_error = error - last_error;
 
+	    int last_error = info.target - last_encoder_readings[motor];
+
+	    int d_error = error - last_error;
+	    int i_error = calculate_integral(motor);
+
+	    last_errors[motor][info.history_ptr] = error;
+	    pid_infos[motor].history_ptr = ((info.history_ptr + 1) % INTEGRATOR_HISTORY);
+	    
 	    /* motor locking logic */
 	    int motor_locking_error = 0;
 	    int num_locked_motors = 0;
@@ -190,7 +188,7 @@ static void pid_loop()
 	    /* 	     d_error); */
 
 	    
-	    int simple_pid_speed = info.P * error + info.D * d_error;
+	    int simple_pid_speed = info.P * error + info.D * d_error + info.I * i_error;
 	    int clamped_simple_speed = motor_get_clamped_speed(motor, simple_pid_speed);
 	    int scaled_clamped_simple_speed = 0.9 * clamped_simple_speed;
 	    int final_speed = scaled_clamped_simple_speed + motor_locking_speed;
@@ -200,12 +198,12 @@ static void pid_loop()
 	       without this, it results in us recording arbirtarily
 	       large values which quickly bring the stall above the
 	       threshold */
-	    int stall = get_stall(motor_get_clamped_speed(motor, final_speed),
-				  last_encoder_readings[motor],
-				  position);
+	    /* int stall = get_stall(motor_get_clamped_speed(motor, final_speed), */
+	    /* 			  last_encoder_readings[motor], */
+	    /* 			  position); */
 
-	    stall_history[motor][info.history_ptr % STALL_HISTORY_SIZE] = stall;
-	    pid_infos[motor].history_ptr += 1;
+	    /* stall_history[motor][info.history_ptr % STALL_HISTORY_SIZE] = stall; */
+	    /* pid_infos[motor].history_ptr += 1; */
 	    last_encoder_readings[motor] = position;
 
 
@@ -214,41 +212,23 @@ static void pid_loop()
 	    /* 	     motor, */
 	    /* 	     speed); */
 
-	    int avg_stall = get_avg_stall(motor);
+	    /* int avg_stall = get_avg_stall(motor); */
 
 	    /* ESP_LOGI("stall", "avg_stall: %d", avg_stall); */
 
-	    if (avg_stall > motor_get_max_pwm(motor))
-	    {
-		motor_set_speed(motor, 0);
-		ESP_LOGE("motor", "Motor stall detected, stopping motor %d", motor + 1);
-	    }
-	    else
-	    {
-		motor_set_speed_smooth(motor, final_speed);
-	    }
+	    /* if (avg_stall > motor_get_max_pwm(motor)) */
+	    /* { */
+	    /* 	motor_set_speed(motor, 0); */
+	    /* 	ESP_LOGE("motor", "Motor stall detected, stopping motor %d", motor + 1); */
+	    /* } */
+	    /* else */
+	    /* { */
+	    motor_set_speed_smooth(motor, final_speed);
+	    /* } */
 	}
 
 	vTaskDelay(pdMS_TO_TICKS(2));
     }
-}
-
-
-static int clamp(int input, int lower, int upper)
-{
-    
-    if (upper <= lower)
-    {
-	ESP_LOGE("pid", "clamp upper limit %d is less equal to lower limit %d", upper, lower);
-	return 0;
-    }
-    
-    if (input > upper)
-	return upper;
-    if (input < lower)
-	return lower;
-
-    return input;
 }
 
 void pid_goto(motor_t motor, int target)
@@ -348,6 +328,7 @@ void separate_motors(motor_t m1, motor_t m2)
 void pid_register(motor_t motor,
 		  encoder_t encoder,
 		  float P,
+		  float I,
 		  float D,
 		  int max_ticks)
 {
@@ -359,7 +340,7 @@ void pid_register(motor_t motor,
 	.error = false,
 	.encoder = encoder,
 	.P = P,
-	.I = 0.0,
+	.I = I,
 	.D = D,
 	.target = 0,
 	.max_ticks = max_ticks

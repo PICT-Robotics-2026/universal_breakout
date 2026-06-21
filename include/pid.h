@@ -15,6 +15,7 @@ void pid_register(motor_t,
 		  encoder_t,
 		  float,
 		  float,
+		  float,
 		  int);
 
 void calibrate(motor_t, limit_sw_t);
